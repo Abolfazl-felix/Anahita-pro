@@ -1,53 +1,71 @@
-from datetime import date
-from persiantools.jdatetime import JalaliDate
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from telegram import Bot
 
-from config import BOT_TOKEN, CHANNEL_ID
-from storage import list_events
+from config import BOT_TOKEN
+from database import get_connection
+from utils import days_left, build_message
 
 
 bot = Bot(BOT_TOKEN)
 
-
-def days_left(date_str):
-
-    year, month, day = map(int, date_str.split("/"))
-
-    birthday = JalaliDate(year, month, day).to_gregorian()
-
-    return (birthday - date.today()).days
+scheduler = AsyncIOScheduler()
 
 
 async def send_daily_messages():
 
-    events = list_events()
+    conn = get_connection()
 
-    if not events:
-        return
+    cur = conn.cursor()
 
-    for event in events:
+    cur.execute("""
+        SELECT
+            channels.telegram_id,
+            events.title,
+            events.event_date,
+            events.emoji
+        FROM events
+        JOIN channels
+        ON events.channel_id = channels.id
+        WHERE channels.enabled = 1
+    """)
 
-        days = days_left(event["date"])
+    rows = cur.fetchall()
 
-        if days > 0:
+    conn.close()
 
-            text = (
-                f"🎂 تا تولد {event['name']} "
-                f"{days} روز مونده ❤️"
-            )
+    for channel_id, title, event_date, emoji in rows:
 
-        elif days == 0:
+        days = days_left(event_date)
 
-            text = (
-                f"🎉 امروز تولد "
-                f"{event['name']} هست ❤️"
-            )
-
-        else:
-
+        if days > 30:
             continue
 
-        await bot.send_message(
-            chat_id=CHANNEL_ID,
-            text=text
+        text = build_message(
+            emoji,
+            title,
+            days
         )
+
+        try:
+
+            await bot.send_message(
+                chat_id=channel_id,
+                text=text
+            )
+
+        except Exception as e:
+
+            print(e)
+
+
+def start_scheduler():
+
+    scheduler.add_job(
+        send_daily_messages,
+        "cron",
+        hour=9,
+        minute=0
+    )
+
+    scheduler.start()
