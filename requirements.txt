@@ -1,4 +1,3 @@
 python-telegram-bot==20.8
-persiantools
-requests
-APScheduler
+apscheduler==3.10.4
+persiantools==5.4.0
