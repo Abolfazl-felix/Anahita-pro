@@ -1,10 +1,13 @@
 services:
   - type: web
     name: anahita-pro
-    runtime: python
+    env: python
     plan: free
+
     buildCommand: pip install -r requirements.txt
+
     startCommand: python main.py
+
     envVars:
       - key: BOT_TOKEN
         sync: false
