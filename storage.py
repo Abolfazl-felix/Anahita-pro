@@ -1,62 +1,134 @@
 import json
 import os
+
 from config import DATA_FILE
 
 
-def load_events():
+def _default_data():
+    return {
+        "selected_channels": {},
+        "events": []
+    }
+
+
+def load_data():
     if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump([], f)
+        save_data(_default_data())
 
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        data = _default_data()
+        save_data(data)
+        return data
 
 
-def save_events(events):
+def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(events, f, ensure_ascii=False, indent=4)
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
 
 
-def add_event(name, date):
-    events = load_events()
+def set_selected_channel(user_id, channel_id, channel_name):
 
-    events.append(
-        {
-            "name": name,
-            "date": date
-        }
-    )
+    data = load_data()
 
-    save_events(events)
+    data["selected_channels"][str(user_id)] = {
+        "channel_id": channel_id,
+        "channel_name": channel_name
+    }
+
+    save_data(data)
 
 
-def delete_event(index):
-    events = load_events()
+def get_selected_channel(user_id):
+
+    data = load_data()
+
+    return data["selected_channels"].get(str(user_id))
+
+
+def add_event(
+    channel_id,
+    channel_name,
+    name,
+    date
+):
+
+    data = load_data()
+
+    data["events"].append({
+        "channel_id": channel_id,
+        "channel_name": channel_name,
+        "name": name,
+        "date": date
+    })
+
+    save_data(data)
+
+
+def get_events(channel_id=None):
+
+    data = load_data()
+
+    if channel_id is None:
+        return data["events"]
+
+    return [
+        e
+        for e in data["events"]
+        if e["channel_id"] == channel_id
+    ]
+
+
+def delete_event(channel_id, index):
+
+    events = get_events(channel_id)
 
     if index < 0 or index >= len(events):
         return None
 
-    removed = events.pop(index)
+    target = events[index]
 
-    save_events(events)
+    data = load_data()
 
-    return removed
+    data["events"].remove(target)
+
+    save_data(data)
+
+    return target
 
 
-def list_events():
-    return load_events()
+def edit_event(
+    channel_id,
+    index,
+    new_name,
+    new_date
+):
 
-
-def edit_event(index, name, date):
-
-    events = load_events()
+    events = get_events(channel_id)
 
     if index < 0 or index >= len(events):
         return False
 
-    events[index]["name"] = name
-    events[index]["date"] = date
+    target = events[index]
 
-    save_events(events)
+    data = load_data()
+
+    for item in data["events"]:
+
+        if item == target:
+
+            item["name"] = new_name
+            item["date"] = new_date
+
+            break
+
+    save_data(data)
 
     return True
