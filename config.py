@@ -1,0 +1,9 @@
+import os
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+CHANNEL_ID = -1004297391995
+
+ADMIN_ID = 6771695421
+
+DATA_FILE = "events.json"
